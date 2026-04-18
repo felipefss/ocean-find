@@ -1,0 +1,57 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+
+jobs:
+  deploy-web:
+    name: Deploy apps/web → Vercel
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy to Vercel
+        run: |
+          pnpm dlx vercel --token ${{ secrets.VERCEL_TOKEN }} \
+            --prod \
+            --yes \
+            --cwd apps/web
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+  deploy-scraper:
+    name: Deploy apps/scraper → Render
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Trigger Render deploy hook
+        run: |
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -o /dev/null -w "%{http_code}" | grep -q "^2" || exit 1

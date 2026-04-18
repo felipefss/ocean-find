@@ -1,0 +1,30 @@
+{
+  "name": "@ocean-find/db",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "drizzle-orm": "^0.41.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.4",
+    "dotenv": "^16.5.0",
+    "typescript": "^6"
+  }
+}

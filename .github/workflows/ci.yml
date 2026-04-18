@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci:
+    name: Lint · Typecheck · Test · Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: |
+          pnpm --filter @ocean-find/types build
+          pnpm --filter @ocean-find/db build
+
+      - name: Lint (Biome)
+        run: pnpm biome check .
+
+      - name: Typecheck
+        run: |
+          pnpm --filter @ocean-find/web exec tsc --noEmit
+          pnpm --filter @ocean-find/scraper exec tsc --noEmit
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Test
+        run: |
+          pnpm --filter @ocean-find/scraper exec vitest run
+          pnpm --filter @ocean-find/web exec vitest run
+
+      - name: Build Next.js
+        run: pnpm --filter @ocean-find/web build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          NEXTAUTH_URL: https://ocean-find.vercel.app
+          GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          NEXT_PUBLIC_SCRAPER_URL: ${{ secrets.NEXT_PUBLIC_SCRAPER_URL }}
