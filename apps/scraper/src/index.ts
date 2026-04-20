@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { db, designatedEmployers } from "@ocean-find/db";
+import { designatedEmployers, getDb } from "@ocean-find/db";
 import cors from "cors";
 import express from "express";
 import { requireAuth } from "./middleware/auth.js";
@@ -28,6 +28,7 @@ app.get("/api/search", (_req, res) => {
 // Requires valid JWT. Runs all 4 province parsers and upserts results to DB.
 // Streams SSE progress events as each province completes.
 app.post("/api/employers/load", requireAuth, async (_req, res) => {
+  const db = getDb();
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
