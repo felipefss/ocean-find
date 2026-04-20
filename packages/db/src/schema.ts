@@ -1,5 +1,14 @@
 import { relations } from "drizzle-orm";
-import { integer, json, pgEnum, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  integer,
+  json,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  unique,
+} from "drizzle-orm/pg-core";
 
 // ─── Auth.js tables (required by @auth/drizzle-adapter) ──────────────────────
 
@@ -57,15 +66,19 @@ export const provinceEnum = pgEnum("province", ["NB", "NS", "PE", "NL"]);
 
 // ─── App tables ───────────────────────────────────────────────────────────────
 
-export const designatedEmployers = pgTable("designated_employers", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  name: text("name").notNull(),
-  province: provinceEnum("province").notNull(),
-  createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
-});
+export const designatedEmployers = pgTable(
+  "designated_employers",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: text("name").notNull(),
+    province: provinceEnum("province").notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+  },
+  (t) => [unique("designated_employers_name_province_unique").on(t.name, t.province)],
+);
 
 export const bookmarks = pgTable("bookmarks", {
   id: text("id")
