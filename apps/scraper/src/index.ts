@@ -2,6 +2,7 @@ import "dotenv/config";
 import { designatedEmployers, getDb } from "@ocean-find/db";
 import cors from "cors";
 import express from "express";
+import type { Request } from "express";
 import { requireAuth } from "./middleware/auth.js";
 import { parseEmployers as parseNB } from "./parsers/nb.js";
 import { parseEmployers as parseNL } from "./parsers/nl.js";
@@ -27,15 +28,30 @@ app.get("/api/search", (_req, res) => {
 // ─── POST /api/employers/load ─────────────────────────────────────────────────
 // Requires valid JWT. Runs all 4 province parsers and upserts results to DB.
 // Streams SSE progress events as each province completes.
-app.post("/api/employers/load", requireAuth, async (_req, res) => {
+app.post("/api/employers/load", requireAuth, async (req, res) => {
   const db = getDb();
+  let isClientConnected = true;
+
+  const markDisconnected = () => {
+    isClientConnected = false;
+  };
+
+  req.on("close", markDisconnected);
+  req.on("aborted", markDisconnected);
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders();
 
   const send = (data: object) => {
+    if (!isRequestActive(req) || !isClientConnected) {
+      isClientConnected = false;
+      return false;
+    }
+
     res.write(`data: ${JSON.stringify(data)}\n\n`);
+    return true;
   };
 
   type ProvinceConfig = {
@@ -53,10 +69,17 @@ app.post("/api/employers/load", requireAuth, async (_req, res) => {
   let total = 0;
 
   for (const { province, parse } of provinces) {
-    send({ province, status: "loading" });
+    if (!send({ province, status: "loading" })) {
+      break;
+    }
 
     try {
       const names = await parse();
+
+      if (!isRequestActive(req) || !isClientConnected) {
+        break;
+      }
+
       if (names.length > 0) {
         await db
           .insert(designatedEmployers)
@@ -71,18 +94,34 @@ app.post("/api/employers/load", requireAuth, async (_req, res) => {
             set: { updatedAt: new Date() },
           });
       }
+
+      if (!isRequestActive(req) || !isClientConnected) {
+        break;
+      }
+
       total += names.length;
-      send({ province, status: "done", count: names.length });
+      if (!send({ province, status: "done", count: names.length })) {
+        break;
+      }
     } catch (err) {
       console.error(`[employers/load] Error loading ${province}:`, err);
-      send({ province, status: "error", message: String(err) });
+
+      if (!send({ province, status: "error", message: String(err) })) {
+        break;
+      }
     }
   }
 
-  send({ type: "done", total });
-  res.end();
+  if (isRequestActive(req) && isClientConnected) {
+    send({ type: "done", total });
+    res.end();
+  }
 });
 
 app.listen(PORT, () => {
   console.log(`[scraper] Server running on port ${PORT}`);
 });
+
+function isRequestActive(req: Request): boolean {
+  return !req.destroyed;
+}

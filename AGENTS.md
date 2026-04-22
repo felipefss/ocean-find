@@ -218,7 +218,7 @@ Detect Atlantic provinces from a location string. Look for:
 
 ## Employer Loading (`apps/scraper/src/parsers/`)
 
-`POST /api/employers/load` — requires valid JWT
+`POST /api/employers/load` — requires valid JWT in the `Authorization: Bearer <token>` header
 
 Parsers (one per province):
 
@@ -230,7 +230,9 @@ Parsers (one per province):
 | NL            | https://www.gov.nl.ca/immigration/immigrating-to-newfoundland-and-labrador/atlantic-immigration-program/designated-employers/ | Inspect network tab for paginated raw URL first; if found use direct fetch + cheerio. Otherwise use Playwright to walk all pagination pages. |
 
 Each parser returns `string[]` of employer names. The endpoint upserts all records to
-`designated_employers` and streams SSE progress:
+`designated_employers` and streams progress in the HTTP response body using SSE-formatted events.
+Because this is a mutating `POST` request and requires an `Authorization` header, the browser
+client must consume it with `fetch` streaming rather than native `EventSource`.
 
 ```
 data: {"province":"PEI","status":"loading"}
@@ -270,7 +272,7 @@ data: {"type":"done","total":892}
 **EmployerLoader** — "Load / Update Employers" button in header/settings area
 
 - If no employers in DB: shows prominent banner with step-by-step instructions
-- On click: opens modal, connects to SSE progress endpoint, shows per-province status with counts
+- On click: opens modal, sends `POST /api/employers/load` with `Authorization: Bearer <token>`, reads the streamed response with `fetch`, and shows per-province status with counts
 
 **SavedSearchesDropdown** — dropdown near search bar listing all saved search names
 
@@ -390,7 +392,7 @@ errors it cannot auto-fix.
 2. NS parser (axios + pdf-parse)
 3. NB parser (axios + pdf-parse)
 4. NL parser (network inspection first, then cheerio or Playwright fallback)
-5. `POST /api/employers/load` SSE endpoint; JWT auth middleware
+5. `POST /api/employers/load` streamed progress endpoint; JWT auth middleware
 6. Unit tests for all 4 parsers with fixture files
 
 ### Phase 3 — Job Scrapers (scraper service)
@@ -423,7 +425,7 @@ errors it cannot auto-fix.
 
 1. "Load / Update Employers" button in header
 2. No-employers banner on search page (disables search button, shows instructions)
-3. SSE progress modal (per-province status + final count)
+3. Progress modal consuming streamed `fetch` response from `POST /api/employers/load`
 
 ### Phase 7 — CI/CD
 
