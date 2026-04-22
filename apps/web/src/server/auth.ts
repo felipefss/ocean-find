@@ -1,12 +1,11 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import { db } from "@ocean-find/db";
-import { accounts, sessions, users, verificationTokens } from "@ocean-find/db";
+import { accounts, getDb, sessions, users, verificationTokens } from "@ocean-find/db";
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db, {
+export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
+  adapter: DrizzleAdapter(getDb(), {
     usersTable: users,
     accountsTable: accounts,
     sessionsTable: sessions,
@@ -31,4 +30,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-});
+}));

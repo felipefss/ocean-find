@@ -40,18 +40,16 @@ jobs:
         run: |
           pnpm --filter @ocean-find/web exec tsc --noEmit
           pnpm --filter @ocean-find/scraper exec tsc --noEmit
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       - name: Test
         run: |
+          pnpm --filter @ocean-find/db exec vitest run
           pnpm --filter @ocean-find/scraper exec vitest run
           pnpm --filter @ocean-find/web exec vitest run
 
       - name: Build Next.js
         run: pnpm --filter @ocean-find/web build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           NEXTAUTH_URL: https://ocean-find.vercel.app
           GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}

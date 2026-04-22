@@ -1,6 +1,5 @@
 import { protectedProcedure, router } from "@/server/trpc";
-import { db } from "@ocean-find/db";
-import { savedSearches } from "@ocean-find/db";
+import { getDb, savedSearches } from "@ocean-find/db";
 import type { Job } from "@ocean-find/types";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -16,6 +15,7 @@ export const savedSearchesRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const db = getDb();
       const userId = ctx.session.user.id as string;
       const [saved] = await db
         .insert(savedSearches)
@@ -31,6 +31,7 @@ export const savedSearchesRouter = router({
     }),
 
   list: protectedProcedure.query(async ({ ctx }) => {
+    const db = getDb();
     const userId = ctx.session.user.id as string;
     return db
       .select({
@@ -48,6 +49,7 @@ export const savedSearchesRouter = router({
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const db = getDb();
       const userId = ctx.session.user.id as string;
       await db
         .delete(savedSearches)
